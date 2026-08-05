@@ -962,7 +962,12 @@ document.getElementById('importFile').addEventListener('change', async (e)=>{
    Only clears this work order's own data — saved customers/equipment and Settings (technician
    name, rates, manufacturers list, next WO#) are untouched. */
 function clearFormFields(){
-  document.querySelectorAll('input[type=text], input[type=number], input[type=date], input[type=time], textarea').forEach(el=>{
+  // Scoped to #mainForm only — the Settings panel lives in the header and has its own
+  // text/number/textarea inputs (name, rates, manufacturers list); an unscoped
+  // document-wide selector was blanking those out too even though the underlying
+  // `settings` object/localStorage was never touched, making it look like settings
+  // had been wiped whenever the panel was reopened after starting a new work order.
+  document.getElementById('mainForm').querySelectorAll('input[type=text], input[type=number], input[type=date], input[type=time], textarea').forEach(el=>{
     if (el.id==='woNumber') return;
     el.value='';
   });
