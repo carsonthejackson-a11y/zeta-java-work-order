@@ -344,22 +344,28 @@ function recalc(){
   return {partsTotal, laborTotal, travelTotal, misc, freight, tax, grand};
 }
 
-/* ---------- signature pads ---------- */
+/* ---------- signature pads ----------
+   Canvases are sized from getBoundingClientRect(), which returns 0x0 for anything inside a
+   display:none container. Since the signature canvases start out hidden (import step shows
+   first), setting them up naively at page load left them permanently 0x0 — signing silently did
+   nothing, and any stray toDataURL() on a 0x0 canvas could hand pdf-lib invalid PNG bytes and
+   crash PDF generation. makeSignaturePad() below skips (rather than corrupts) a resize while
+   hidden, and callers must re-resize once a canvas actually becomes visible. */
 const signatureData = {}; // canvasId -> dataURL (or undefined if empty)
-function setupSignaturePad(canvasId, hintId){
-  const canvas = document.getElementById(canvasId);
-  const hint = document.getElementById(hintId);
+
+function makeSignaturePad(canvas, hint, opts={}){
   const ctx = canvas.getContext('2d');
   let drawing = false, hasInk = false, last = null;
 
   function resize(){
     const rect = canvas.getBoundingClientRect();
+    if (rect.width < 2 || rect.height < 2) return false; // hidden/not laid out yet — don't corrupt
     const ratio = window.devicePixelRatio || 1;
     const prevData = hasInk ? canvas.toDataURL() : null;
     canvas.width = rect.width * ratio;
     canvas.height = rect.height * ratio;
     ctx.scale(ratio, ratio);
-    ctx.lineWidth = 2;
+    ctx.lineWidth = opts.lineWidth || 2;
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
     ctx.strokeStyle = '#111';
@@ -368,9 +374,9 @@ function setupSignaturePad(canvasId, hintId){
       img.onload = () => ctx.drawImage(img, 0, 0, rect.width, rect.height);
       img.src = prevData;
     }
+    return true;
   }
   window.addEventListener('resize', resize);
-  resize();
 
   function pos(evt){
     const rect = canvas.getBoundingClientRect();
@@ -381,7 +387,7 @@ function setupSignaturePad(canvasId, hintId){
     evt.preventDefault();
     drawing = true;
     last = pos(evt);
-    hint.style.display = 'none';
+    if (hint) hint.style.display = 'none';
   }
   function move(evt){
     if (!drawing) return;
@@ -397,7 +403,7 @@ function setupSignaturePad(canvasId, hintId){
   function end(){
     if (!drawing) return;
     drawing = false;
-    if (hasInk) signatureData[canvasId] = canvas.toDataURL('image/png');
+    if (opts.onChange) opts.onChange();
   }
   canvas.addEventListener('mousedown', start);
   canvas.addEventListener('mousemove', move);
@@ -407,21 +413,110 @@ function setupSignaturePad(canvasId, hintId){
   canvas.addEventListener('touchend', end);
 
   return {
+    resize,
+    hasInk: () => hasInk,
+    // Crops to just the drawn ink (plus a small margin) before exporting. Without this, a
+    // signature drawn on a tall portrait canvas (like the expand modal, which fills the phone
+    // screen) keeps that tall/narrow shape — fitting it into the form's wide/short signature box
+    // then shrinks it down to a barely-visible sliver to satisfy the height constraint.
+    dataURL(){
+      if (canvas.width <= 1 || canvas.height <= 1 || !hasInk) return null;
+      const w = canvas.width, h = canvas.height;
+      const imgData = ctx.getImageData(0, 0, w, h).data;
+      let minX=w, minY=h, maxX=-1, maxY=-1;
+      for (let y=0; y<h; y++){
+        const rowStart = y*w*4;
+        for (let x=0; x<w; x++){
+          if (imgData[rowStart + x*4 + 3] > 10){
+            if (x<minX) minX=x; if (x>maxX) maxX=x;
+            if (y<minY) minY=y; if (y>maxY) maxY=y;
+          }
+        }
+      }
+      if (maxX < minX || maxY < minY) return null;
+      const pad = Math.round(Math.max(w,h)*0.015);
+      minX = Math.max(0, minX-pad); minY = Math.max(0, minY-pad);
+      maxX = Math.min(w-1, maxX+pad); maxY = Math.min(h-1, maxY+pad);
+      const cw = maxX-minX+1, ch = maxY-minY+1;
+      const out = document.createElement('canvas');
+      out.width = cw; out.height = ch;
+      out.getContext('2d').drawImage(canvas, minX, minY, cw, ch, 0, 0, cw, ch);
+      return out.toDataURL('image/png');
+    },
     clear(){
       const rect = canvas.getBoundingClientRect();
-      ctx.clearRect(0, 0, rect.width, rect.height);
+      ctx.clearRect(0, 0, rect.width || canvas.width, rect.height || canvas.height);
       hasInk = false;
-      delete signatureData[canvasId];
-      hint.style.display = 'block';
-    }
+      if (hint) hint.style.display = 'block';
+    },
+    // Draws a (possibly already-cropped) signature image centered and aspect-fit into the
+    // canvas, rather than stretching it to fill — stretching would distort a cropped wide/short
+    // signature when it's reloaded into a tall portrait canvas (e.g. reopening the expand modal).
+    loadFrom(dataUrl){
+      if (!dataUrl) return;
+      const img = new Image();
+      img.onload = () => {
+        const rect = canvas.getBoundingClientRect();
+        const scale = Math.min(rect.width/img.width, rect.height/img.height, 1) * 0.85;
+        const w = img.width*scale, h = img.height*scale;
+        ctx.drawImage(img, (rect.width-w)/2, (rect.height-h)/2, w, h);
+        hasInk = true;
+        if (hint) hint.style.display = 'none';
+      };
+      img.src = dataUrl;
+    },
   };
 }
+
 const sigPads = {
-  custSigCanvas: setupSignaturePad('custSigCanvas', 'custSigHint'),
-  techSigCanvas: setupSignaturePad('techSigCanvas', 'techSigHint'),
+  custSigCanvas: makeSignaturePad(
+    document.getElementById('custSigCanvas'), document.getElementById('custSigHint'),
+    { onChange: () => { signatureData.custSigCanvas = sigPads.custSigCanvas.dataURL(); } }
+  ),
+  techSigCanvas: makeSignaturePad(
+    document.getElementById('techSigCanvas'), document.getElementById('techSigHint'),
+    { onChange: () => { signatureData.techSigCanvas = sigPads.techSigCanvas.dataURL(); } }
+  ),
 };
 document.querySelectorAll('[data-clear-sig]').forEach(btn=>{
-  btn.addEventListener('click', ()=> sigPads[btn.dataset.clearSig].clear());
+  btn.addEventListener('click', ()=> { sigPads[btn.dataset.clearSig].clear(); delete signatureData[btn.dataset.clearSig]; });
+});
+
+/* ---------- expand-to-sign modal ---------- */
+const sigModal = document.getElementById('sigModal');
+const sigModalPad = makeSignaturePad(
+  document.getElementById('sigModalCanvas'), document.getElementById('sigModalHint'),
+  { lineWidth: 3 }
+);
+let sigModalTarget = null;
+document.querySelectorAll('[data-expand-sig]').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    sigModalTarget = btn.dataset.expandSig;
+    document.getElementById('sigModalTitle').textContent =
+      sigModalTarget === 'custSigCanvas' ? 'Customer signature' : 'Tech signature';
+    sigModal.classList.add('open');
+    sigModalPad.clear();
+    requestAnimationFrame(() => {
+      sigModalPad.resize();
+      sigModalPad.loadFrom(signatureData[sigModalTarget]);
+    });
+  });
+});
+function closeSigModal(){
+  sigModal.classList.remove('open');
+  sigModalTarget = null;
+}
+document.getElementById('sigModalCancel').addEventListener('click', closeSigModal);
+document.getElementById('sigModalClear').addEventListener('click', ()=> sigModalPad.clear());
+document.getElementById('sigModalDone').addEventListener('click', ()=>{
+  if (!sigModalTarget) return;
+  const url = sigModalPad.dataURL();
+  if (url){
+    signatureData[sigModalTarget] = url;
+    sigPads[sigModalTarget].clear();
+    sigPads[sigModalTarget].loadFrom(url);
+  }
+  closeSigModal();
 });
 
 /* ---------- quick fill / autofill import ---------- */
@@ -821,6 +916,12 @@ function showMainForm(){
   document.getElementById('importAgainBtn').style.display = 'inline-block';
   document.getElementById('headerSubtitle').textContent = 'Fill fast, generate the real PDF';
   window.scrollTo(0,0);
+  // The signature canvases were hidden (display:none) until now, so their earlier resize()
+  // calls were no-ops — size them for real now that they have actual layout dimensions.
+  requestAnimationFrame(() => {
+    sigPads.custSigCanvas.resize();
+    sigPads.techSigCanvas.resize();
+  });
 }
 function showImportStep(){
   document.getElementById('importStep').style.display = '';
@@ -877,6 +978,8 @@ document.getElementById('resetBtn').addEventListener('click', ()=>{
   document.getElementById('importText').value = '';
   sigPads.custSigCanvas.clear();
   sigPads.techSigCanvas.clear();
+  delete signatureData.custSigCanvas;
+  delete signatureData.techSigCanvas;
   recalc();
 });
 
@@ -1016,11 +1119,17 @@ async function generatePdf(){
 
   // Notes — small font matching the form's label size, preserving the author's own line breaks
   // (including blank lines between thoughts) rather than reflowing everything into one block.
-  const notes = document.getElementById('notes').value;
-  if (notes){
+  // Always leads with "Service Request: <nature of the request>" (from ticket import or typed
+  // in); if there's a "Work performed" writeup, it follows two blank lines down, its own line
+  // starting with "Work performed:".
+  const serviceRequestVal = document.getElementById('notes').value.trim();
+  const workPerformedVal = document.getElementById('workPerformed').value.trim();
+  let notesText = 'Service Request: ' + serviceRequestVal;
+  if (workPerformedVal) notesText += '\n\n\nWork performed: ' + workPerformedVal;
+  {
     const NOTE_SIZE = 6.2;
     const renderLines = [];
-    for (const rawLine of notes.split('\n')){
+    for (const rawLine of notesText.split('\n')){
       if (rawLine.trim() === ''){ renderLines.push(''); continue; }
       renderLines.push(...wrapText(rawLine, font, NOTE_SIZE, 545));
     }
@@ -1083,16 +1192,22 @@ async function generatePdf(){
   drawText(90, centerY(735.8,752.4,11.5), document.getElementById('custSignName').value, {size:11.5});
   drawText(97, centerY(752.4,769.0,11.5), document.getElementById('techSignName').value, {size:11.5});
 
-  // Signature images (drawn onto the "Signature:" line of each row)
+  // Signature images (drawn onto the "Signature:" line of each row). Wrapped in try/catch so a
+  // bad/empty capture skips just that signature instead of failing the whole PDF.
   async function drawSignature(canvasId, bottomLine){
     const dataUrl = signatureData[canvasId];
     if (!dataUrl) return;
-    const pngBytes = b64ToBytes(dataUrl.split(',')[1]);
-    const png = await pdfDoc.embedPng(pngBytes);
-    const maxW = 145, maxH = 15;
-    const scale = Math.min(maxW/png.width, maxH/png.height);
-    const w = png.width*scale, h = png.height*scale;
-    page.drawImage(png, { x: 239, y: toY(bottomLine)+1, width: w, height: h });
+    try {
+      const pngBytes = b64ToBytes(dataUrl.split(',')[1]);
+      if (pngBytes.length < 100) throw new Error('signature image too small/empty');
+      const png = await pdfDoc.embedPng(pngBytes);
+      const maxW = 145, maxH = 15;
+      const scale = Math.min(maxW/png.width, maxH/png.height);
+      const w = png.width*scale, h = png.height*scale;
+      page.drawImage(png, { x: 239, y: toY(bottomLine)+1, width: w, height: h });
+    } catch(err){
+      console.error('Skipping signature (could not embed):', canvasId, err);
+    }
   }
   await drawSignature('custSigCanvas', 752.4);
   await drawSignature('techSigCanvas', 769.0);

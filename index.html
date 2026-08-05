@@ -70,7 +70,17 @@
   .sig-wrap canvas{display:block;width:100%;height:110px;touch-action:none;}
   .sig-line{position:absolute;left:8%;right:8%;bottom:22px;border-top:1px solid #ccc;pointer-events:none;}
   .sig-empty-hint{position:absolute;left:0;right:0;bottom:26px;text-align:center;font-size:12px;color:#bbb;pointer-events:none;}
-  .sig-actions{display:flex;justify-content:flex-end;margin-top:6px;}
+  .sig-actions{display:flex;justify-content:space-between;margin-top:6px;}
+  .sig-modal{position:fixed;inset:0;background:#fff;z-index:200;display:none;flex-direction:column;}
+  .sig-modal.open{display:flex;}
+  .sig-modal-head{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:1px solid var(--line);}
+  .sig-modal-head h3{margin:0;font-size:15px;}
+  .sig-modal-canvas-wrap{flex:1;position:relative;background:#fbfbfb;}
+  .sig-modal-canvas-wrap canvas{display:block;width:100%;height:100%;touch-action:none;}
+  .sig-modal-line{position:absolute;left:6%;right:6%;bottom:18%;border-top:2px solid #ccc;pointer-events:none;}
+  .sig-modal-hint{position:absolute;left:0;right:0;bottom:calc(18% + 6px);text-align:center;font-size:15px;color:#bbb;pointer-events:none;}
+  .sig-modal-foot{display:flex;gap:8px;padding:12px 16px calc(12px + env(safe-area-inset-bottom));border-top:1px solid var(--line);}
+  .sig-modal-foot .btn{flex:1;}
 </style>
 </head>
 <body>
@@ -199,7 +209,11 @@
 
   <div class="card">
     <h2>Notes</h2>
-    <textarea id="notes" placeholder="What you did, findings, recommendations…"></textarea>
+    <label>Service request</label>
+    <textarea id="notes" placeholder="Nature of the service request…"></textarea>
+    <label>Work performed</label>
+    <textarea id="workPerformed" placeholder="What you did, findings, recommendations…"></textarea>
+    <div class="hint">Printed on the form as "Service Request: …" then, two lines down, "Work performed: …".</div>
   </div>
 
   <div class="card">
@@ -231,7 +245,10 @@
       <div class="sig-line"></div>
       <div class="sig-empty-hint" id="custSigHint">Sign here</div>
     </div>
-    <div class="sig-actions"><button class="btn btn-secondary btn-small" data-clear-sig="custSigCanvas">Clear signature</button></div>
+    <div class="sig-actions">
+      <button class="btn btn-secondary btn-small" data-expand-sig="custSigCanvas">Expand to sign</button>
+      <button class="btn btn-secondary btn-small" data-clear-sig="custSigCanvas">Clear signature</button>
+    </div>
 
     <div class="grid2" style="margin-top:14px;">
       <div><label>Tech print name</label><input type="text" id="techSignName"></div>
@@ -243,9 +260,28 @@
       <div class="sig-line"></div>
       <div class="sig-empty-hint" id="techSigHint">Sign here</div>
     </div>
-    <div class="sig-actions"><button class="btn btn-secondary btn-small" data-clear-sig="techSigCanvas">Clear signature</button></div>
+    <div class="sig-actions">
+      <button class="btn btn-secondary btn-small" data-expand-sig="techSigCanvas">Expand to sign</button>
+      <button class="btn btn-secondary btn-small" data-clear-sig="techSigCanvas">Clear signature</button>
+    </div>
   </div>
 
+</div>
+
+<div class="sig-modal" id="sigModal">
+  <div class="sig-modal-head">
+    <h3 id="sigModalTitle">Signature</h3>
+    <button class="btn btn-secondary btn-small" id="sigModalCancel">Close</button>
+  </div>
+  <div class="sig-modal-canvas-wrap">
+    <canvas id="sigModalCanvas"></canvas>
+    <div class="sig-modal-line"></div>
+    <div class="sig-modal-hint" id="sigModalHint">Sign here</div>
+  </div>
+  <div class="sig-modal-foot">
+    <button class="btn btn-secondary" id="sigModalClear">Clear</button>
+    <button class="btn btn-primary" id="sigModalDone">Done</button>
+  </div>
 </div>
 
 <div class="foot" id="mainFoot" style="display:none;">

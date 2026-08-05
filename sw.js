@@ -1,4 +1,4 @@
-const CACHE_NAME = 'zeta-java-wo-v1';
+const CACHE_NAME = 'zeta-java-wo-v2';
 const ASSETS = [
   './',
   './index.html',
