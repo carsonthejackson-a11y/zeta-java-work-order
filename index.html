@@ -1,0 +1,271 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
+<title>Zeta Java Work Order</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#111111">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
+<meta name="apple-mobile-web-app-title" content="ZJ Work Order">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="icon" href="icon-32.png">
+<style>
+  :root{
+    --ink:#111; --sub:#666; --line:#ddd; --bg:#f4f4f5; --card:#fff;
+    --accent:#111; --accentText:#fff; --danger:#b3261e; --radius:12px;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--ink);padding-bottom:110px;}
+  header{background:#111;color:#fff;padding:18px 16px 14px;position:sticky;top:0;z-index:20;}
+  header h1{margin:0;font-size:18px;font-weight:700;}
+  header p{margin:2px 0 0;font-size:12px;color:#bbb;}
+  .wrap{max-width:640px;margin:0 auto;padding:12px;}
+  .card{background:var(--card);border-radius:var(--radius);padding:14px;margin-bottom:12px;box-shadow:0 1px 2px rgba(0,0,0,.06);}
+  .card h2{font-size:13px;text-transform:uppercase;letter-spacing:.04em;color:var(--sub);margin:0 0 10px;display:flex;align-items:center;justify-content:space-between;}
+  label{display:block;font-size:12px;color:var(--sub);margin:8px 0 3px;}
+  input[type=text],input[type=number],input[type=date],input[type=time],select,textarea{
+    width:100%;padding:10px 10px;border:1px solid var(--line);border-radius:8px;font-size:16px;background:#fff;color:var(--ink);
+  }
+  textarea{min-height:70px;resize:vertical;font-family:inherit;}
+  .row{display:flex;gap:8px;}
+  .row > *{flex:1;min-width:0;}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:0 10px;}
+  .grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:0 10px;}
+  .chip-select{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px;}
+  .chip{border:1px solid var(--line);border-radius:20px;padding:8px 12px;font-size:13px;background:#fff;cursor:pointer;user-select:none;}
+  .chip.on{background:var(--accent);color:var(--accentText);border-color:var(--accent);}
+  .btn{display:inline-block;border:none;border-radius:8px;padding:10px 14px;font-size:14px;font-weight:600;cursor:pointer;}
+  .btn-primary{background:var(--accent);color:var(--accentText);}
+  .btn-secondary{background:#eee;color:var(--ink);}
+  .btn-danger{background:#fdecea;color:var(--danger);}
+  .btn-small{padding:6px 10px;font-size:12px;}
+  .btn-block{width:100%;}
+  .part-row, .labor-row{border:1px solid var(--line);border-radius:8px;padding:10px;margin-bottom:8px;position:relative;}
+  .part-row .remove, .labor-row .remove{position:absolute;top:6px;right:6px;font-size:12px;color:var(--danger);background:none;border:none;cursor:pointer;}
+  .totalline{display:flex;justify-content:space-between;font-size:14px;padding:4px 0;border-bottom:1px dashed var(--line);}
+  .totalline:last-child{border-bottom:none;font-weight:700;font-size:16px;padding-top:8px;}
+  .totalline input{width:110px;text-align:right;padding:6px 8px;font-size:14px;}
+  .foot{position:fixed;bottom:0;left:0;right:0;background:#fff;border-top:1px solid var(--line);padding:10px 16px calc(10px + env(safe-area-inset-bottom));z-index:30;}
+  .foot .wrap{padding:0;display:flex;gap:8px;max-width:640px;}
+  .foot .btn{flex:1;font-size:15px;padding:13px;}
+  .savebar{display:flex;gap:8px;align-items:center;margin-top:8px;}
+  .savebar input{flex:1;}
+  select{-webkit-appearance:none;appearance:none;background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='6'><path d='M0 0l5 6 5-6z' fill='%23666'/></svg>");background-repeat:no-repeat;background-position:right 12px center;padding-right:28px;}
+  .hint{font-size:11px;color:var(--sub);margin-top:4px;}
+  .toast{position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:#111;color:#fff;padding:10px 16px;border-radius:20px;font-size:13px;z-index:50;opacity:0;pointer-events:none;transition:opacity .2s;}
+  .toast.show{opacity:1;}
+  .settings-toggle{background:none;border:none;color:#bbb;font-size:12px;text-decoration:underline;padding:0;}
+  .settings-body{display:none;margin-top:10px;}
+  .settings-body.open{display:block;}
+  small.gray{color:var(--sub);}
+  .import-card{border:1px dashed #bbb;}
+  .filebtn{display:inline-block;border:1px solid var(--line);border-radius:8px;padding:9px 12px;font-size:13px;background:#fff;cursor:pointer;text-align:center;}
+  .filebtn input{display:none;}
+  .import-actions{display:flex;gap:8px;margin-top:8px;flex-wrap:wrap;}
+  .import-actions > *{flex:1;min-width:120px;}
+  .sig-wrap{border:1px solid var(--line);border-radius:8px;overflow:hidden;background:#fbfbfb;position:relative;}
+  .sig-wrap canvas{display:block;width:100%;height:110px;touch-action:none;}
+  .sig-line{position:absolute;left:8%;right:8%;bottom:22px;border-top:1px solid #ccc;pointer-events:none;}
+  .sig-empty-hint{position:absolute;left:0;right:0;bottom:26px;text-align:center;font-size:12px;color:#bbb;pointer-events:none;}
+  .sig-actions{display:flex;justify-content:flex-end;margin-top:6px;}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="wrap" style="padding:0;display:flex;justify-content:space-between;align-items:flex-start;">
+    <div>
+      <h1>Zeta Java Work Order</h1>
+      <p id="headerSubtitle">Fill fast, generate the real PDF</p>
+    </div>
+    <div style="text-align:right;">
+      <button class="settings-toggle" id="importAgainBtn" style="display:none;margin-bottom:6px;">Import a ticket</button><br>
+      <button class="settings-toggle" id="settingsToggle">Settings</button>
+    </div>
+  </div>
+  <div class="wrap" style="padding:0;">
+    <div class="settings-body" id="settingsBody">
+      <div class="grid2">
+        <div><label>Your name (technician)</label><input type="text" id="setTechName"></div>
+        <div><label>Next work order #</label><input type="text" id="setNextWO"></div>
+      </div>
+      <div class="grid3">
+        <div><label>Labor rate $/hr</label><input type="number" id="setLaborRate" step="0.01"></div>
+        <div><label>Overtime $/hr</label><input type="number" id="setOtRate" step="0.01"></div>
+        <div><label>Mileage $/mi</label><input type="number" id="setMileRate" step="0.01"></div>
+      </div>
+      <div><label>Tax rate % (applied to parts)</label><input type="number" id="setTaxRate" step="0.01"></div>
+      <label>Known manufacturers (comma-separated)</label>
+      <textarea id="setManufacturers" style="min-height:60px;" placeholder="BUNN, La Marzocco, Rancilio, Franke, …"></textarea>
+      <div class="hint" style="margin-top:-4px;">Used when a ticket lists equipment as one combined string (e.g. "BUNN H5X Water Boiler") — a name on this list is split off as Manufacturer, the rest becomes Model.</div>
+      <button class="btn btn-secondary btn-block" id="saveSettingsBtn" style="margin-top:10px;">Save settings</button>
+    </div>
+  </div>
+</header>
+
+<div class="wrap" id="importStep">
+
+  <div class="card import-card">
+    <h2>Step 1: Import Service Request Ticket</h2>
+    <div class="hint" style="margin-top:-4px;margin-bottom:6px;">
+      Paste the ticket text (an email, a PDF export, a dispatcher job ticket) or upload the PDF directly —
+      we'll pull out the customer, site, equipment, and problem details automatically. Everything stays
+      editable afterward, and nothing here is required.
+    </div>
+    <textarea id="importText" placeholder="Paste the service request ticket text here…" style="min-height:140px;"></textarea>
+    <div class="import-actions">
+      <label class="filebtn" id="importFileLabel">Upload PDF<input type="file" id="importFile" accept="application/pdf"></label>
+      <button class="btn btn-primary" id="importBtn" style="flex:1;">Import & Continue</button>
+    </div>
+    <button class="btn btn-secondary btn-block" id="skipImportBtn" style="margin-top:10px;">Skip — enter manually</button>
+  </div>
+
+</div>
+
+<div class="wrap" id="mainForm" style="display:none;">
+
+  <div class="card">
+    <h2>Work Order</h2>
+    <div class="grid2">
+      <div><label>Work Order #</label><input type="text" id="woNumber"></div>
+      <div><label>Purchase Order #</label><input type="text" id="poNumber"></div>
+    </div>
+    <label style="display:flex;align-items:center;gap:8px;margin-top:10px;">
+      <input type="checkbox" id="emailInvoice" style="width:auto;"> Email invoice
+    </label>
+  </div>
+
+  <div class="card">
+    <h2>Customer <span></span></h2>
+    <label>Saved customer</label>
+    <select id="customerSelect"><option value="">— New customer —</option></select>
+    <label>Account name</label><input type="text" id="acctName">
+    <label>Address</label><input type="text" id="address">
+    <div class="grid3">
+      <div><label>City</label><input type="text" id="city"></div>
+      <div><label>State</label><input type="text" id="state" maxlength="2" style="text-transform:uppercase"></div>
+      <div><label>Zip</label><input type="text" id="zip"></div>
+    </div>
+    <label>Contact name</label><input type="text" id="contactName">
+    <div class="grid2">
+      <div><label>Phone 1</label><input type="text" id="phone1"></div>
+      <div><label>Phone 2</label><input type="text" id="phone2"></div>
+    </div>
+    <div class="savebar">
+      <input type="text" id="customerSaveName" placeholder="Save this customer as…">
+      <button class="btn btn-secondary btn-small" id="saveCustomerBtn">Save</button>
+      <button class="btn btn-danger btn-small" id="deleteCustomerBtn" style="display:none;">Delete</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Equipment</h2>
+    <label>Saved equipment</label>
+    <select id="equipSelect"><option value="">— New equipment —</option></select>
+    <label>Description</label><input type="text" id="equipDesc" placeholder="e.g. Espresso Machine">
+    <label>Manufacturer</label><input type="text" id="manufacturer">
+    <label>Model</label><input type="text" id="model">
+    <label>Serial #</label><input type="text" id="serial">
+    <div class="grid2">
+      <div><label>Volts rated</label><input type="text" id="voltsRated"></div>
+      <div><label>Volts supplied</label><input type="text" id="voltsSupplied"></div>
+    </div>
+    <div class="savebar">
+      <input type="text" id="equipSaveName" placeholder="Save this equipment as…">
+      <button class="btn btn-secondary btn-small" id="saveEquipBtn">Save</button>
+      <button class="btn btn-danger btn-small" id="deleteEquipBtn" style="display:none;">Delete</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Service type</h2>
+    <div class="chip-select" id="serviceTypeChips">
+      <div class="chip" data-val="cleaning">Cleaning issue</div>
+      <div class="chip" data-val="install">Install</div>
+      <div class="chip" data-val="scheduled">Scheduled maintenance</div>
+      <div class="chip" data-val="emergency">Emergency service</div>
+      <div class="chip" data-val="discussed">Discussed with manager on duty</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Parts / service lines <button class="btn btn-secondary btn-small" id="addPartBtn">+ Add line</button></h2>
+    <div id="partsList"></div>
+    <div class="hint">Up to 6 lines fit on the form.</div>
+  </div>
+
+  <div class="card">
+    <h2>Notes</h2>
+    <textarea id="notes" placeholder="What you did, findings, recommendations…"></textarea>
+  </div>
+
+  <div class="card">
+    <h2>Labor & travel <button class="btn btn-secondary btn-small" id="addLaborBtn">+ Add row</button></h2>
+    <div id="laborList"></div>
+    <div class="hint">Up to 2 rows fit on the form.</div>
+  </div>
+
+  <div class="card">
+    <h2>Totals</h2>
+    <div class="totalline"><span>Labor</span><span id="totLabor">$0.00</span></div>
+    <div class="totalline"><span>Travel</span><span id="totTravel">$0.00</span></div>
+    <div class="totalline"><span>Parts</span><span id="totParts">$0.00</span></div>
+    <div class="totalline"><span>Misc</span><input type="number" id="miscAmt" value="0" step="0.01"></div>
+    <div class="totalline"><span>Freight</span><input type="number" id="freightAmt" value="0" step="0.01"></div>
+    <div class="totalline"><span>Tax</span><input type="number" id="taxAmt" value="0" step="0.01"></div>
+    <div class="totalline"><span>TOTAL</span><span id="totGrand">$0.00</span></div>
+  </div>
+
+  <div class="card">
+    <h2>Signatures</h2>
+    <div class="grid2">
+      <div><label>Customer print name</label><input type="text" id="custSignName"></div>
+      <div><label>Date</label><input type="date" id="custSignDate"></div>
+    </div>
+    <label>Customer signature</label>
+    <div class="sig-wrap">
+      <canvas id="custSigCanvas"></canvas>
+      <div class="sig-line"></div>
+      <div class="sig-empty-hint" id="custSigHint">Sign here</div>
+    </div>
+    <div class="sig-actions"><button class="btn btn-secondary btn-small" data-clear-sig="custSigCanvas">Clear signature</button></div>
+
+    <div class="grid2" style="margin-top:14px;">
+      <div><label>Tech print name</label><input type="text" id="techSignName"></div>
+      <div><label>Date</label><input type="date" id="techSignDate"></div>
+    </div>
+    <label>Tech signature</label>
+    <div class="sig-wrap">
+      <canvas id="techSigCanvas"></canvas>
+      <div class="sig-line"></div>
+      <div class="sig-empty-hint" id="techSigHint">Sign here</div>
+    </div>
+    <div class="sig-actions"><button class="btn btn-secondary btn-small" data-clear-sig="techSigCanvas">Clear signature</button></div>
+  </div>
+
+</div>
+
+<div class="foot" id="mainFoot" style="display:none;">
+  <div class="wrap">
+    <button class="btn btn-secondary" id="resetBtn">Clear form</button>
+    <button class="btn btn-primary" id="generateBtn">Generate PDF</button>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="pdf-lib.min.js"></script>
+<script src="pdfjs.min.js"></script>
+<script src="app.js"></script>
+<script>
+if ('serviceWorker' in navigator){
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('sw.js').catch(console.error);
+  });
+}
+</script>
+</body>
+</html>
