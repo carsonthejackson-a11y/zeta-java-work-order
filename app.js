@@ -976,6 +976,9 @@ function clearFormFields(){
   taxManuallyEdited=false;
   addPartRow(); addLaborRow();
   document.getElementById('techSignName').value = settings.techName;
+  const today = new Date().toISOString().slice(0,10);
+  document.getElementById('custSignDate').value = today;
+  document.getElementById('techSignDate').value = today;
   document.getElementById('importText').value = '';
   sigPads.custSigCanvas.clear();
   sigPads.techSigCanvas.clear();
