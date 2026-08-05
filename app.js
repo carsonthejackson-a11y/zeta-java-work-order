@@ -958,9 +958,10 @@ document.getElementById('importFile').addEventListener('change', async (e)=>{
   }
 });
 
-/* ---------- clear form ---------- */
-document.getElementById('resetBtn').addEventListener('click', ()=>{
-  if (!confirm('Clear all fields on this work order? Saved customers/equipment/settings are kept.')) return;
+/* ---------- clear form ----------
+   Only clears this work order's own data — saved customers/equipment and Settings (technician
+   name, rates, manufacturers list, next WO#) are untouched. */
+function clearFormFields(){
   document.querySelectorAll('input[type=text], input[type=number], input[type=date], input[type=time], textarea').forEach(el=>{
     if (el.id==='woNumber') return;
     el.value='';
@@ -981,6 +982,15 @@ document.getElementById('resetBtn').addEventListener('click', ()=>{
   delete signatureData.custSigCanvas;
   delete signatureData.techSigCanvas;
   recalc();
+}
+document.getElementById('resetBtn').addEventListener('click', ()=>{
+  if (!confirm('Clear all fields on this work order? Saved customers/equipment/settings are kept.')) return;
+  clearFormFields();
+});
+document.getElementById('newWorkOrderBtn').addEventListener('click', ()=>{
+  if (!confirm('Start a new work order? This clears the current form (saved customers/equipment/settings are kept) and takes you back to the import step.')) return;
+  clearFormFields();
+  showImportStep();
 });
 
 /* ================= PDF GENERATION ================= */
