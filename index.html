@@ -2,10 +2,11 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Zeta Java Work Order</title>
+<meta name="description" content="Fill out and generate Zeta Java service work orders from your phone.">
 <link rel="manifest" href="manifest.json">
-<meta name="theme-color" content="#111111">
+<meta name="theme-color" content="#17140f">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black">
@@ -13,289 +14,565 @@
 <link rel="apple-touch-icon" href="icon-180.png">
 <link rel="icon" href="icon-32.png">
 <style>
+  /* ---------- tokens ---------- */
   :root{
-    --ink:#111; --sub:#666; --line:#ddd; --bg:#f4f4f5; --card:#fff;
-    --accent:#111; --accentText:#fff; --danger:#b3261e; --radius:12px;
+    color-scheme:light dark;
+    --bg:#f2f0ed; --card:#fff; --field:#fff; --chip:#ebe8e3;
+    --ink:#17140f; --sub:#676158; --line:#e1ddd6; --line-strong:#c9c3ba;
+    --primary:#17140f; --primary-ink:#fff;
+    --accent:#a8520f; --accent-soft:#fbf1e3;
+    --danger:#a32a1e; --danger-soft:#fbeae7;
+    --bar:#17140f; --bar-ink:#fff; --bar-sub:#b9b2a7; --bar-chip:#2c2720;
+    --r-lg:14px; --r-md:10px; --r-sm:8px;
+    --shadow:0 1px 2px rgba(48,36,18,.07),0 6px 18px rgba(48,36,18,.04);
+    --z-bar:20; --z-foot:30; --z-toast:60; --z-sheet:80; --z-sign:90;
+    --bar-h:104px;
   }
+  @media (prefers-color-scheme:dark){
+    :root{
+      --bg:#12100d; --card:#1d1a16; --field:#141210; --chip:#2b2722;
+      --ink:#f1ede6; --sub:#a8a195; --line:#322d27; --line-strong:#4b453d;
+      --primary:#f1ede6; --primary-ink:#17140f;
+      --accent:#e3a05a; --accent-soft:#33271b;
+      --danger:#f09384; --danger-soft:#3a201c;
+      --bar:#0b0a08; --bar-chip:#26221c;
+      --shadow:none;
+    }
+  }
+
+  /* ---------- base ---------- */
   *{box-sizing:border-box}
-  body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--ink);padding-bottom:170px;}
-  header{background:#111;color:#fff;padding:18px 16px 14px;position:sticky;top:0;z-index:20;}
-  header h1{margin:0;font-size:18px;font-weight:700;}
-  header p{margin:2px 0 0;font-size:12px;color:#bbb;}
-  .wrap{max-width:640px;margin:0 auto;padding:12px;}
-  .card{background:var(--card);border-radius:var(--radius);padding:14px;margin-bottom:12px;box-shadow:0 1px 2px rgba(0,0,0,.06);}
-  .card h2{font-size:13px;text-transform:uppercase;letter-spacing:.04em;color:var(--sub);margin:0 0 10px;display:flex;align-items:center;justify-content:space-between;}
-  label{display:block;font-size:12px;color:var(--sub);margin:8px 0 3px;}
-  input[type=text],input[type=number],input[type=date],input[type=time],select,textarea{
-    width:100%;padding:10px 10px;border:1px solid var(--line);border-radius:8px;font-size:16px;background:#fff;color:var(--ink);
+  html{-webkit-text-size-adjust:100%}
+  body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",sans-serif;
+    background:var(--bg);color:var(--ink);line-height:1.35;-webkit-font-smoothing:antialiased;
+    padding-bottom:calc(96px + env(safe-area-inset-bottom));-webkit-tap-highlight-color:transparent}
+  body.sheet-open{overflow:hidden}
+  [hidden]{display:none !important}
+  button{font:inherit;color:inherit}
+  .num{font-variant-numeric:tabular-nums}
+  .wrap{max-width:640px;margin:0 auto;padding:12px}
+  :focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+  /* ---------- app bar ---------- */
+  .appbar{background:var(--bar);color:var(--bar-ink);position:sticky;top:0;z-index:var(--z-bar);
+    padding-top:env(safe-area-inset-top)}
+  .appbar-in{max-width:640px;margin:0 auto;padding:12px 12px 10px 16px;display:flex;align-items:center;gap:12px}
+  .appbar-title{flex:1;min-width:0}
+  .appbar h1{margin:0;font-size:18px;font-weight:650;letter-spacing:-.01em;display:flex;align-items:baseline;gap:8px}
+  .appbar h1 .wo{font-weight:500;color:var(--bar-sub);font-variant-numeric:tabular-nums}
+  .appbar p{margin:1px 0 0;font-size:12.5px;color:var(--bar-sub);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .barbtn{display:inline-flex;align-items:center;gap:7px;min-height:44px;padding:0 14px;border:0;border-radius:var(--r-md);
+    background:var(--bar-chip);color:var(--bar-ink);font-size:14px;font-weight:600;cursor:pointer;transition:transform .12s,background .15s}
+  .barbtn:active{transform:scale(.97)}
+  .barbtn svg{width:18px;height:18px}
+  .secnav{max-width:640px;margin:0 auto;display:flex;gap:4px;overflow-x:auto;padding:0 10px 8px;scrollbar-width:none;-webkit-overflow-scrolling:touch}
+  .secnav::-webkit-scrollbar{display:none}
+  .secnav a{flex:none;padding:7px 11px;border-radius:999px;font-size:13px;font-weight:550;color:var(--bar-sub);text-decoration:none;
+    transition:background .15s,color .15s}
+  .secnav a.on{background:var(--bar-ink);color:var(--bar)}
+
+  /* ---------- cards ---------- */
+  .card{background:var(--card);border-radius:var(--r-lg);padding:16px 14px 18px;margin-bottom:12px;box-shadow:var(--shadow);
+    scroll-margin-top:calc(var(--bar-h) + 8px)}
+  .card-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:2px;min-height:32px}
+  .card h2{margin:0;font-size:16px;font-weight:650;letter-spacing:-.005em}
+  .card-head .count{font-size:12.5px;color:var(--sub);font-variant-numeric:tabular-nums;margin-left:auto}
+  .hint{font-size:12.5px;color:var(--sub);margin:8px 0 0;text-wrap:pretty}
+  .hint.warn{color:var(--danger);font-weight:550}
+
+  /* ---------- fields ---------- */
+  .field{display:block;margin-top:10px;min-width:0}
+  .lbl,.lblrow{display:flex;align-items:flex-end;justify-content:space-between;min-height:20px;margin-bottom:4px;
+    font-size:13px;font-weight:550;color:var(--sub)}
+  input[type=text],input[type=tel],input[type=number],input[type=date],input[type=time],select,textarea{
+    display:block;width:100%;min-width:0;min-height:46px;padding:10px 12px;border:1px solid var(--line-strong);border-radius:var(--r-md);
+    font:inherit;font-size:16px;background:var(--field);color:var(--ink);-webkit-appearance:none;appearance:none;
+    transition:border-color .15s,box-shadow .15s,background .2s}
+  input:focus,select:focus,textarea:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 22%,transparent)}
+  input::placeholder,textarea::placeholder{color:color-mix(in srgb,var(--sub) 70%,transparent)}
+  input::-webkit-date-and-time-value{text-align:left}
+  textarea{min-height:76px;resize:none;line-height:1.4;overflow:hidden}
+  select{background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='8'><path d='M1 1.5l5 5 5-5' fill='none' stroke='%23857e73' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'/></svg>");
+    background-repeat:no-repeat;background-position:right 14px center;padding-right:36px}
+  #state{text-transform:uppercase}
+  .wrap .imported{background:var(--accent-soft);border-color:color-mix(in srgb,var(--accent) 45%,var(--line-strong))}
+  .g2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0 10px}
+  .g3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:0 10px}
+  .g-csz{display:grid;grid-template-columns:minmax(0,1.7fr) 68px minmax(0,1fr);gap:0 10px}
+  .check{display:flex;align-items:center;gap:10px;min-height:44px;margin-top:8px;font-size:15px;cursor:pointer}
+  .check input{width:22px;height:22px;margin:0;accent-color:var(--primary);flex:none}
+
+  /* ---------- buttons ---------- */
+  .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:46px;padding:0 16px;border:0;border-radius:var(--r-md);
+    font-size:15px;font-weight:600;cursor:pointer;text-decoration:none;transition:transform .12s,background .15s,opacity .15s}
+  .btn:active{transform:scale(.98)}
+  .btn[disabled]{opacity:.45;cursor:default;transform:none}
+  .btn-primary{background:var(--primary);color:var(--primary-ink)}
+  .btn-secondary{background:var(--chip);color:var(--ink)}
+  .btn-danger{background:var(--danger-soft);color:var(--danger)}
+  .btn-small{min-height:36px;padding:0 12px;font-size:13.5px;border-radius:var(--r-sm)}
+  .btn-block{width:100%}
+  .btn svg{width:17px;height:17px;flex:none}
+  .linkbtn{background:none;border:0;padding:10px 4px;min-height:40px;font-size:14px;font-weight:550;color:var(--sub);
+    text-decoration:underline;text-underline-offset:3px;cursor:pointer}
+  .linkbtn.danger{color:var(--danger)}
+
+  /* ---------- chips / segmented ---------- */
+  .chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+  .chip{min-height:42px;border:1px solid var(--line-strong);border-radius:999px;padding:0 15px;font-size:14.5px;font-weight:500;
+    background:var(--field);color:var(--ink);cursor:pointer;transition:background .15s,color .15s,border-color .15s,transform .12s}
+  .chip:active{transform:scale(.97)}
+  .chip.on{background:var(--primary);color:var(--primary-ink);border-color:var(--primary);font-weight:600}
+  .seg{display:grid;grid-template-columns:1fr 1fr;background:var(--chip);border-radius:var(--r-md);padding:3px;min-height:46px}
+  .seg button{border:0;background:none;border-radius:8px;font-size:14.5px;font-weight:550;color:var(--sub);cursor:pointer;transition:background .15s,color .15s}
+  .seg button.on{background:var(--card);color:var(--ink);box-shadow:0 1px 2px rgba(0,0,0,.14)}
+
+  /* ---------- import step ---------- */
+  .import-card p.lead{margin:6px 0 12px;font-size:14.5px;color:var(--sub);text-wrap:pretty}
+  #importText{min-height:150px;overflow:auto}
+  .import-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px}
+  .filebtn input{position:absolute;width:1px;height:1px;opacity:0;pointer-events:none}
+  .import-card .btn-primary{margin-top:10px}
+  .import-card.drop{outline:2px dashed var(--accent);outline-offset:-5px}
+  .import-card.busy .btn,.import-card.busy .linkbtn{opacity:.45;pointer-events:none}
+  .import-status{display:grid;gap:6px;margin-top:10px;font-size:13.5px;font-weight:550;color:var(--sub)}
+  .import-status .track{height:5px;border-radius:3px;background:var(--chip);overflow:hidden}
+  .import-status .fill{display:block;height:100%;width:0;background:var(--accent);border-radius:3px;transition:width .25s}
+  .import-status .fill.wait{width:35%;animation:slide 1.1s ease-in-out infinite alternate}
+  @keyframes slide{from{transform:translateX(-20%)}to{transform:translateX(210%)}}
+  .import-card .skip{display:block;margin:6px auto 0}
+
+  /* ---------- notice ---------- */
+  .notice{display:flex;gap:10px;align-items:flex-start;background:var(--accent-soft);border:1px solid color-mix(in srgb,var(--accent) 35%,transparent);
+    border-radius:var(--r-md);padding:10px 6px 10px 12px;margin-bottom:12px;font-size:14px}
+  .notice strong{font-weight:650}
+  .notice .x{flex:none;margin:-6px 0 -6px auto}
+  .iconbtn{display:inline-flex;align-items:center;justify-content:center;width:44px;height:44px;border:0;background:none;border-radius:var(--r-md);
+    color:var(--sub);cursor:pointer;flex:none}
+  .iconbtn:active{background:var(--chip)}
+  .iconbtn svg{width:18px;height:18px}
+
+  /* ---------- saved customer / equipment ---------- */
+  .savebar{display:flex;gap:8px;align-items:center;margin-top:12px;padding-top:12px;border-top:1px solid var(--line)}
+  .savebar input{flex:1}
+  .savebar .btn{min-height:46px}
+
+  /* ---------- line rows (parts, labor) ---------- */
+  .line-row{border:1px solid var(--line);border-radius:var(--r-md);padding:4px 12px 14px;margin-top:10px;background:color-mix(in srgb,var(--bg) 45%,var(--card))}
+  .line-head{display:flex;align-items:center;gap:8px;min-height:44px;margin-right:-10px}
+  .line-head .n{font-size:13px;font-weight:650;color:var(--sub)}
+  .line-head .amt{margin-left:auto;font-size:15px;font-weight:650;font-variant-numeric:tabular-nums}
+  .line-head + .field,.line-head + .g2 > .field{margin-top:0}
+  .g-part{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(0,.8fr) minmax(0,1fr);gap:0 8px}
+  .nowbtn{border:0;background:none;margin:-12px -2px -8px 0;padding:12px 2px 8px 16px;font-size:13px;font-weight:650;color:var(--accent);cursor:pointer}
+  .addrow{margin-top:12px}
+
+  /* ---------- notes ---------- */
+  .meter{display:flex;align-items:center;gap:10px;margin-top:12px;font-size:12.5px;color:var(--sub);font-variant-numeric:tabular-nums}
+  .meter .track{flex:1;height:5px;border-radius:3px;background:var(--chip);overflow:hidden}
+  .meter .fill{display:block;height:100%;width:0;background:var(--sub);border-radius:3px;transition:width .2s}
+  .meter.over{color:var(--danger);font-weight:600}
+  .meter.over .fill{background:var(--danger)}
+
+  /* ---------- totals ---------- */
+  .totalline{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:46px;border-bottom:1px solid var(--line);font-size:15px}
+  .totalline .what{display:flex;flex-direction:column}
+  .totalline .what small{font-size:12.5px;color:var(--sub);font-variant-numeric:tabular-nums}
+  .totalline .what small button{padding:0;min-height:0;font-size:12.5px}
+  .totalline .val{font-variant-numeric:tabular-nums;font-weight:550}
+  .totalline input{width:116px;text-align:right;min-height:40px;padding:6px 10px;font-variant-numeric:tabular-nums}
+  .totalline.grand{border-bottom:0;min-height:52px;font-size:18px;font-weight:700}
+  .totalline.grand .val{font-weight:700}
+
+  /* ---------- signatures ---------- */
+  .sig-block + .sig-block{margin-top:18px;padding-top:8px;border-top:1px solid var(--line)}
+  .sig-box{display:flex;align-items:center;justify-content:center;position:relative;width:100%;height:104px;margin-top:10px;padding:8px 12px;
+    border:1px dashed #b9b2a7;border-radius:var(--r-md);background:#fdfcfa;color:#7b7469;font-size:15px;font-weight:600;cursor:pointer}
+  .sig-box.signed{border-style:solid;border-color:#cfc9bf}
+  .sig-box img{max-width:100%;max-height:100%;object-fit:contain}
+  .sig-box::after{content:"";position:absolute;left:8%;right:8%;bottom:20px;border-top:1px solid #d8d2c8;pointer-events:none}
+  .sig-actions{display:flex;justify-content:flex-end;align-items:center;gap:8px;min-height:10px}
+  .sig-actions .check{margin:0 auto 0 0;font-size:14px;color:var(--sub)}
+
+  .sig-modal{position:fixed;inset:0;background:#fff;color:#17140f;z-index:var(--z-sign);display:none;flex-direction:column;color-scheme:light}
+  .sig-modal.open{display:flex}
+  .sig-modal-head{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:calc(10px + env(safe-area-inset-top)) 10px 10px 16px;border-bottom:1px solid #e1ddd6}
+  .sig-modal-head h3{margin:0;font-size:17px;font-weight:650}
+  .sig-modal-head p{margin:2px 0 0;font-size:12.5px;color:#676158;text-wrap:pretty}
+  .sig-modal .btn-secondary{background:#ebe8e3;color:#17140f}
+  .sig-modal .btn-primary{background:#17140f;color:#fff}
+  .sig-modal-canvas-wrap{flex:1;position:relative;background:#fdfcfa;min-height:0}
+  .sig-modal-canvas-wrap canvas{display:block;width:100%;height:100%;touch-action:none}
+  .sig-modal-line{position:absolute;left:6%;right:6%;bottom:22%;border-top:2px solid #cfc9bf;pointer-events:none}
+  .sig-modal-hint{position:absolute;left:0;right:0;bottom:calc(22% + 8px);text-align:center;font-size:15px;color:#b9b2a7;pointer-events:none}
+  .sig-modal-foot{display:flex;gap:8px;padding:10px 12px calc(10px + env(safe-area-inset-bottom));border-top:1px solid #e1ddd6}
+  .sig-modal-foot .btn{flex:1;min-height:50px}
+
+  /* ---------- footer ---------- */
+  .foot{position:fixed;bottom:0;left:0;right:0;background:var(--card);background:color-mix(in srgb,var(--card) 92%,transparent);-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px);
+    border-top:1px solid var(--line);padding:10px 12px calc(10px + env(safe-area-inset-bottom));z-index:var(--z-foot)}
+  .foot-in{max-width:616px;margin:0 auto;display:flex;align-items:center;gap:14px}
+  .foot-total{display:flex;flex-direction:column;min-width:92px}
+  .foot-total span{font-size:12px;font-weight:550;color:var(--sub)}
+  .foot-total strong{font-size:19px;font-weight:700;font-variant-numeric:tabular-nums;letter-spacing:-.01em}
+  .foot .btn{flex:1;min-height:52px;font-size:16px}
+
+  /* ---------- sheets ---------- */
+  .sheet{position:fixed;inset:0;z-index:var(--z-sheet);background:rgba(15,12,8,.5);display:none;align-items:flex-end;justify-content:center}
+  .sheet.open{display:flex;animation:fade .18s ease-out}
+  .sheet-panel{width:100%;max-width:640px;max-height:92vh;max-height:92dvh;display:flex;flex-direction:column;background:var(--card);color:var(--ink);outline:none;
+    border-radius:18px 18px 0 0;box-shadow:0 -8px 30px rgba(0,0,0,.2);animation:rise .22s cubic-bezier(.2,.8,.2,1)}
+  .sheet-head{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:14px 8px 6px 18px}
+  .sheet-head h3{margin:0;font-size:17px;font-weight:650}
+  .sheet-body{padding:4px 16px 16px;overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch}
+  .sheet-foot{padding:10px 16px calc(12px + env(safe-area-inset-bottom));border-top:1px solid var(--line)}
+  .sheet-body.pad-safe{padding-bottom:calc(16px + env(safe-area-inset-bottom))}
+  .sheet h4{margin:18px 0 0;font-size:13px;font-weight:650;color:var(--sub)}
+  .menu-list{display:flex;flex-direction:column;gap:2px;margin:0 -8px}
+  .menu-item{display:flex;align-items:center;gap:14px;width:100%;min-height:56px;padding:8px 10px;border:0;background:none;border-radius:var(--r-md);
+    text-align:left;cursor:pointer}
+  .menu-item:active{background:var(--chip)}
+  .menu-item svg{width:21px;height:21px;flex:none;color:var(--sub)}
+  .menu-item b{display:block;font-size:15.5px;font-weight:600}
+  .menu-item small{display:block;font-size:12.5px;color:var(--sub)}
+  .menu-item.danger b,.menu-item.danger svg{color:var(--danger)}
+  .menu-sep{height:1px;background:var(--line);margin:6px 8px}
+  .result-file{font-size:13.5px;color:var(--sub);margin:0 0 4px;word-break:break-all}
+  .result-blank{font-size:13.5px;margin:10px 0 0;padding:10px 12px;border-radius:var(--r-md);background:var(--accent-soft)}
+  .result-actions{display:grid;gap:8px;margin-top:14px}
+  .result-actions .row{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  .version{font-size:12.5px;color:var(--sub);margin:16px 0 0}
+  @keyframes fade{from{opacity:0}to{opacity:1}}
+  @keyframes rise{from{transform:translateY(24px);opacity:.6}to{transform:none;opacity:1}}
+
+  /* ---------- toast ---------- */
+  .toast{position:fixed;bottom:calc(92px + env(safe-area-inset-bottom));left:50%;transform:translate(-50%,8px);max-width:calc(100% - 24px);
+    display:flex;align-items:center;gap:6px;background:#17140f;color:#fff;padding:10px 16px;border-radius:16px;font-size:14px;font-weight:500;
+    z-index:var(--z-toast);opacity:0;pointer-events:none;transition:opacity .18s,transform .18s;box-shadow:0 6px 20px rgba(0,0,0,.25)}
+  .toast.show{opacity:1;transform:translate(-50%,0);pointer-events:auto}
+  .toast button{border:0;background:none;color:#f0b877;font-weight:700;font-size:14px;padding:6px 4px 6px 10px;margin:-6px 0;min-height:36px;cursor:pointer}
+
+  @media (prefers-reduced-motion:reduce){
+    *,*::before,*::after{animation:none !important;transition:none !important}
   }
-  textarea{min-height:70px;resize:vertical;font-family:inherit;}
-  .row{display:flex;gap:8px;}
-  .row > *{flex:1;min-width:0;}
-  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:0 10px;}
-  .grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:0 10px;}
-  .chip-select{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px;}
-  .chip{border:1px solid var(--line);border-radius:20px;padding:8px 12px;font-size:13px;background:#fff;cursor:pointer;user-select:none;}
-  .chip.on{background:var(--accent);color:var(--accentText);border-color:var(--accent);}
-  .btn{display:inline-block;border:none;border-radius:8px;padding:10px 14px;font-size:14px;font-weight:600;cursor:pointer;}
-  .btn-primary{background:var(--accent);color:var(--accentText);}
-  .btn-secondary{background:#eee;color:var(--ink);}
-  .btn-danger{background:#fdecea;color:var(--danger);}
-  .btn-small{padding:6px 10px;font-size:12px;}
-  .btn-block{width:100%;}
-  .part-row, .labor-row{border:1px solid var(--line);border-radius:8px;padding:10px;margin-bottom:8px;position:relative;}
-  .part-row .remove, .labor-row .remove{position:absolute;top:6px;right:6px;font-size:12px;color:var(--danger);background:none;border:none;cursor:pointer;}
-  .totalline{display:flex;justify-content:space-between;font-size:14px;padding:4px 0;border-bottom:1px dashed var(--line);}
-  .totalline:last-child{border-bottom:none;font-weight:700;font-size:16px;padding-top:8px;}
-  .totalline input{width:110px;text-align:right;padding:6px 8px;font-size:14px;}
-  .foot{position:fixed;bottom:0;left:0;right:0;background:#fff;border-top:1px solid var(--line);padding:10px 16px calc(10px + env(safe-area-inset-bottom));z-index:30;}
-  .foot .wrap{padding:0;display:flex;flex-direction:column;gap:8px;max-width:640px;}
-  .foot .row2{display:flex;gap:8px;}
-  .foot .btn{flex:1;font-size:15px;padding:13px;}
-  .savebar{display:flex;gap:8px;align-items:center;margin-top:8px;}
-  .savebar input{flex:1;}
-  select{-webkit-appearance:none;appearance:none;background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='6'><path d='M0 0l5 6 5-6z' fill='%23666'/></svg>");background-repeat:no-repeat;background-position:right 12px center;padding-right:28px;}
-  .hint{font-size:11px;color:var(--sub);margin-top:4px;}
-  .toast{position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:#111;color:#fff;padding:10px 16px;border-radius:20px;font-size:13px;z-index:50;opacity:0;pointer-events:none;transition:opacity .2s;}
-  .toast.show{opacity:1;}
-  .settings-toggle{background:none;border:none;color:#bbb;font-size:12px;text-decoration:underline;padding:0;}
-  .settings-body{display:none;margin-top:10px;}
-  .settings-body.open{display:block;}
-  small.gray{color:var(--sub);}
-  .import-card{border:1px dashed #bbb;}
-  .filebtn{display:inline-block;border:1px solid var(--line);border-radius:8px;padding:9px 12px;font-size:13px;background:#fff;cursor:pointer;text-align:center;}
-  .filebtn input{display:none;}
-  .import-actions{display:flex;gap:8px;margin-top:8px;flex-wrap:wrap;}
-  .import-actions > *{flex:1;min-width:120px;}
-  .sig-wrap{border:1px solid var(--line);border-radius:8px;overflow:hidden;background:#fbfbfb;position:relative;}
-  .sig-wrap canvas{display:block;width:100%;height:110px;touch-action:none;}
-  .sig-line{position:absolute;left:8%;right:8%;bottom:22px;border-top:1px solid #ccc;pointer-events:none;}
-  .sig-empty-hint{position:absolute;left:0;right:0;bottom:26px;text-align:center;font-size:12px;color:#bbb;pointer-events:none;}
-  .sig-actions{display:flex;justify-content:space-between;margin-top:6px;}
-  .sig-modal{position:fixed;inset:0;background:#fff;z-index:200;display:none;flex-direction:column;}
-  .sig-modal.open{display:flex;}
-  .sig-modal-head{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:1px solid var(--line);}
-  .sig-modal-head h3{margin:0;font-size:15px;}
-  .sig-modal-canvas-wrap{flex:1;position:relative;background:#fbfbfb;}
-  .sig-modal-canvas-wrap canvas{display:block;width:100%;height:100%;touch-action:none;}
-  .sig-modal-line{position:absolute;left:6%;right:6%;bottom:18%;border-top:2px solid #ccc;pointer-events:none;}
-  .sig-modal-hint{position:absolute;left:0;right:0;bottom:calc(18% + 6px);text-align:center;font-size:15px;color:#bbb;pointer-events:none;}
-  .sig-modal-foot{display:flex;gap:8px;padding:12px 16px calc(12px + env(safe-area-inset-bottom));border-top:1px solid var(--line);}
-  .sig-modal-foot .btn{flex:1;}
 </style>
 </head>
 <body>
 
-<header>
-  <div class="wrap" style="padding:0;display:flex;justify-content:space-between;align-items:flex-start;">
-    <div>
-      <h1>Zeta Java Work Order</h1>
-      <p id="headerSubtitle">Fill fast, generate the real PDF</p>
+<header class="appbar">
+  <div class="appbar-in">
+    <div class="appbar-title">
+      <h1><span id="headerTitle">New work order</span> <span class="wo" id="headerWo"></span></h1>
+      <p id="headerSubtitle">Zeta Java service form</p>
     </div>
-    <div style="text-align:right;">
-      <button class="settings-toggle" id="importAgainBtn" style="display:none;margin-bottom:6px;">Import a ticket</button><br>
-      <button class="settings-toggle" id="settingsToggle">Settings</button>
-    </div>
+    <button type="button" class="barbtn" id="menuBtn" aria-haspopup="dialog">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
+      Menu
+    </button>
   </div>
-  <div class="wrap" style="padding:0;">
-    <div class="settings-body" id="settingsBody">
-      <div class="grid2">
-        <div><label>Your name (technician)</label><input type="text" id="setTechName"></div>
-        <div><label>Next work order #</label><input type="text" id="setNextWO"></div>
-      </div>
-      <div class="grid3">
-        <div><label>Labor rate $/hr</label><input type="number" id="setLaborRate" step="0.01"></div>
-        <div><label>Overtime $/hr</label><input type="number" id="setOtRate" step="0.01"></div>
-        <div><label>Mileage $/mi</label><input type="number" id="setMileRate" step="0.01"></div>
-      </div>
-      <div><label>Tax rate % (applied to parts)</label><input type="number" id="setTaxRate" step="0.01"></div>
-      <label>Known manufacturers (comma-separated)</label>
-      <textarea id="setManufacturers" style="min-height:60px;" placeholder="BUNN, La Marzocco, Rancilio, Franke, …"></textarea>
-      <div class="hint" style="margin-top:-4px;">Used when a ticket lists equipment as one combined string (e.g. "BUNN H5X Water Boiler") — a name on this list is split off as Manufacturer, the rest becomes Model.</div>
-      <button class="btn btn-secondary btn-block" id="saveSettingsBtn" style="margin-top:10px;">Save settings</button>
-    </div>
-  </div>
+  <nav class="secnav" id="sectionNav" aria-label="Form sections" hidden>
+    <a href="#sec-job">Job</a>
+    <a href="#sec-customer">Customer</a>
+    <a href="#sec-equipment">Equipment</a>
+    <a href="#sec-service">Service</a>
+    <a href="#sec-parts">Parts</a>
+    <a href="#sec-notes">Notes</a>
+    <a href="#sec-labor">Labor</a>
+    <a href="#sec-totals">Totals</a>
+    <a href="#sec-sign">Sign</a>
+  </nav>
 </header>
 
-<div class="wrap" id="importStep">
-
-  <div class="card import-card">
-    <h2>Step 1: Import Service Request Ticket</h2>
-    <div class="hint" style="margin-top:-4px;margin-bottom:6px;">
-      Paste the ticket text (an email, a PDF export, a dispatcher job ticket) or upload the PDF directly —
-      we'll pull out the customer, site, equipment, and problem details automatically. Everything stays
-      editable afterward, and nothing here is required.
+<!-- ============ step 1: import ============ -->
+<main class="wrap" id="importStep">
+  <section class="card import-card" id="importCard">
+    <h2>Start from the ticket</h2>
+    <p class="lead">Paste the service request here as text, a screenshot or a PDF, or pick a photo or file. Customer, site, equipment and the problem get filled in for you, and you can edit all of it.</p>
+    <textarea id="importText" aria-label="Service request ticket" placeholder="Paste the ticket here: text, a screenshot or a PDF"></textarea>
+    <div class="import-status" id="importStatus" role="status" hidden>
+      <span class="track"><span class="fill" id="importStatusFill"></span></span>
+      <span id="importStatusText"></span>
     </div>
-    <textarea id="importText" placeholder="Paste the service request ticket text here…" style="min-height:140px;"></textarea>
     <div class="import-actions">
-      <label class="filebtn" id="importFileLabel">Upload PDF<input type="file" id="importFile" accept="application/pdf"></label>
-      <button class="btn btn-primary" id="importBtn" style="flex:1;">Import & Continue</button>
+      <button type="button" class="btn btn-secondary" id="pasteBtn">Paste</button>
+      <label class="btn btn-secondary filebtn" id="importFileLabel">Photo or PDF<input type="file" id="importFile" accept="application/pdf,image/*" multiple></label>
     </div>
-    <button class="btn btn-secondary btn-block" id="skipImportBtn" style="margin-top:10px;">Skip — enter manually</button>
+    <button type="button" class="btn btn-primary btn-block" id="importBtn">Import and continue</button>
+    <button type="button" class="linkbtn skip" id="skipImportBtn">Skip, enter by hand</button>
+  </section>
+</main>
+
+<!-- ============ step 2: the form ============ -->
+<main class="wrap" id="mainForm" hidden>
+
+  <div class="notice" id="importNotice" role="status" hidden>
+    <div id="importNoticeText"></div>
+    <button type="button" class="iconbtn x" id="importNoticeClose" aria-label="Dismiss">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
+    </button>
   </div>
 
-</div>
-
-<div class="wrap" id="mainForm" style="display:none;">
-
-  <div class="card">
-    <h2>Work Order</h2>
-    <div class="grid2">
-      <div><label>Work Order #</label><input type="text" id="woNumber"></div>
-      <div><label>Purchase Order #</label><input type="text" id="poNumber"></div>
+  <section class="card" id="sec-job">
+    <div class="card-head"><h2>Job</h2></div>
+    <div class="g2">
+      <label class="field"><span class="lbl">Work order #</span><input type="text" id="woNumber" class="num" inputmode="numeric" autocomplete="off"></label>
+      <label class="field"><span class="lbl">Purchase order #</span><input type="text" id="poNumber" autocomplete="off" autocapitalize="characters"></label>
     </div>
-    <label style="display:flex;align-items:center;gap:8px;margin-top:10px;">
-      <input type="checkbox" id="emailInvoice" style="width:auto;"> Email invoice
-    </label>
-  </div>
+    <label class="check"><input type="checkbox" id="emailInvoice"> Email invoice</label>
+  </section>
 
-  <div class="card">
-    <h2>Customer <span></span></h2>
-    <label>Saved customer</label>
-    <select id="customerSelect"><option value="">— New customer —</option></select>
-    <label>Account name</label><input type="text" id="acctName">
-    <label>Address</label><input type="text" id="address">
-    <div class="grid3">
-      <div><label>City</label><input type="text" id="city"></div>
-      <div><label>State</label><input type="text" id="state" maxlength="2" style="text-transform:uppercase"></div>
-      <div><label>Zip</label><input type="text" id="zip"></div>
+  <section class="card" id="sec-customer">
+    <div class="card-head"><h2>Customer</h2></div>
+    <label class="field"><span class="lbl">Saved customer</span>
+      <select id="customerSelect"><option value="">New customer</option></select></label>
+    <label class="field"><span class="lbl">Account name</span><input type="text" id="acctName" autocomplete="off" autocapitalize="words" enterkeyhint="next"></label>
+    <label class="field"><span class="lbl">Address</span><input type="text" id="address" autocomplete="off" autocapitalize="words" enterkeyhint="next"></label>
+    <div class="g-csz">
+      <label class="field"><span class="lbl">City</span><input type="text" id="city" autocomplete="off" autocapitalize="words" enterkeyhint="next"></label>
+      <label class="field"><span class="lbl">State</span><input type="text" id="state" maxlength="2" autocomplete="off" autocapitalize="characters" enterkeyhint="next"></label>
+      <label class="field"><span class="lbl">Zip</span><input type="text" id="zip" class="num" inputmode="numeric" maxlength="10" autocomplete="off" enterkeyhint="next"></label>
     </div>
-    <label>Contact name</label><input type="text" id="contactName">
-    <div class="grid2">
-      <div><label>Phone 1</label><input type="text" id="phone1"></div>
-      <div><label>Phone 2</label><input type="text" id="phone2"></div>
+    <label class="field"><span class="lbl">Contact name</span><input type="text" id="contactName" autocomplete="off" autocapitalize="words" enterkeyhint="next"></label>
+    <div class="g2">
+      <label class="field"><span class="lbl">Phone 1</span><input type="tel" id="phone1" class="num" autocomplete="off" enterkeyhint="next"></label>
+      <label class="field"><span class="lbl">Phone 2</span><input type="tel" id="phone2" class="num" autocomplete="off" enterkeyhint="next"></label>
     </div>
     <div class="savebar">
-      <input type="text" id="customerSaveName" placeholder="Save this customer as…">
-      <button class="btn btn-secondary btn-small" id="saveCustomerBtn">Save</button>
-      <button class="btn btn-danger btn-small" id="deleteCustomerBtn" style="display:none;">Delete</button>
+      <input type="text" id="customerSaveName" aria-label="Name to save this customer under" placeholder="Save customer as" autocomplete="off" autocapitalize="words">
+      <button type="button" class="btn btn-secondary" id="saveCustomerBtn">Save</button>
+      <button type="button" class="btn btn-danger" id="deleteCustomerBtn" hidden>Delete</button>
     </div>
-  </div>
+  </section>
 
-  <div class="card">
-    <h2>Equipment</h2>
-    <label>Saved equipment</label>
-    <select id="equipSelect"><option value="">— New equipment —</option></select>
-    <label>Description</label><input type="text" id="equipDesc" placeholder="e.g. Espresso Machine">
-    <label>Manufacturer</label><input type="text" id="manufacturer">
-    <label>Model</label><input type="text" id="model">
-    <label>Serial #</label><input type="text" id="serial">
-    <div class="grid2">
-      <div><label>Volts rated</label><input type="text" id="voltsRated"></div>
-      <div><label>Volts supplied</label><input type="text" id="voltsSupplied"></div>
+  <section class="card" id="sec-equipment">
+    <div class="card-head"><h2>Equipment</h2></div>
+    <label class="field"><span class="lbl">Saved equipment</span>
+      <select id="equipSelect"><option value="">New equipment</option></select></label>
+    <label class="field"><span class="lbl">Description</span><input type="text" id="equipDesc" placeholder="Espresso machine" autocomplete="off" autocapitalize="words" enterkeyhint="next"></label>
+    <div class="g2">
+      <label class="field"><span class="lbl">Manufacturer</span><input type="text" id="manufacturer" list="mfrList" autocomplete="off" autocapitalize="words" enterkeyhint="next"></label>
+      <label class="field"><span class="lbl">Model</span><input type="text" id="model" autocomplete="off" autocapitalize="characters" enterkeyhint="next"></label>
+    </div>
+    <datalist id="mfrList"></datalist>
+    <label class="field"><span class="lbl">Serial #</span><input type="text" id="serial" autocomplete="off" autocapitalize="characters" autocorrect="off" spellcheck="false" enterkeyhint="next"></label>
+    <div class="g2">
+      <label class="field"><span class="lbl">Volts rated</span><input type="text" id="voltsRated" inputmode="decimal" autocomplete="off" enterkeyhint="next"></label>
+      <label class="field"><span class="lbl">Volts supplied</span><input type="text" id="voltsSupplied" inputmode="decimal" autocomplete="off" enterkeyhint="next"></label>
     </div>
     <div class="savebar">
-      <input type="text" id="equipSaveName" placeholder="Save this equipment as…">
-      <button class="btn btn-secondary btn-small" id="saveEquipBtn">Save</button>
-      <button class="btn btn-danger btn-small" id="deleteEquipBtn" style="display:none;">Delete</button>
+      <input type="text" id="equipSaveName" aria-label="Name to save this equipment under" placeholder="Save equipment as" autocomplete="off" autocapitalize="words">
+      <button type="button" class="btn btn-secondary" id="saveEquipBtn">Save</button>
+      <button type="button" class="btn btn-danger" id="deleteEquipBtn" hidden>Delete</button>
     </div>
-  </div>
+  </section>
 
-  <div class="card">
-    <h2>Service type</h2>
-    <div class="chip-select" id="serviceTypeChips">
-      <div class="chip" data-val="cleaning">Cleaning issue</div>
-      <div class="chip" data-val="install">Install</div>
-      <div class="chip" data-val="scheduled">Scheduled maintenance</div>
-      <div class="chip" data-val="emergency">Emergency service</div>
-      <div class="chip" data-val="discussed">Discussed with manager on duty</div>
+  <section class="card" id="sec-service">
+    <div class="card-head"><h2>Service type</h2></div>
+    <div class="chips" id="serviceTypeChips">
+      <button type="button" class="chip" data-val="cleaning" aria-pressed="false">Cleaning issue</button>
+      <button type="button" class="chip" data-val="install" aria-pressed="false">Install</button>
+      <button type="button" class="chip" data-val="scheduled" aria-pressed="false">Scheduled maintenance</button>
+      <button type="button" class="chip" data-val="emergency" aria-pressed="false">Emergency service</button>
+      <button type="button" class="chip" data-val="discussed" aria-pressed="false">Discussed with manager on duty</button>
     </div>
-  </div>
+  </section>
 
-  <div class="card">
-    <h2>Parts / service lines <button class="btn btn-secondary btn-small" id="addPartBtn">+ Add line</button></h2>
+  <section class="card" id="sec-parts">
+    <div class="card-head"><h2>Parts and service lines</h2><span class="count" id="partsCount"></span></div>
     <div id="partsList"></div>
-    <div class="hint">Up to 6 lines fit on the form.</div>
-  </div>
+    <button type="button" class="btn btn-secondary btn-block addrow" id="addPartBtn">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+      Add a line
+    </button>
+  </section>
 
-  <div class="card">
-    <h2>Notes</h2>
-    <label>Service request</label>
-    <textarea id="notes" placeholder="Nature of the service request…"></textarea>
-    <label>Work performed</label>
-    <textarea id="workPerformed" placeholder="What you did, findings, recommendations…"></textarea>
-    <div class="hint">Printed on the form as "Service Request: …" then, two lines down, "Work performed: …".</div>
-  </div>
+  <section class="card" id="sec-notes">
+    <div class="card-head"><h2>Notes</h2></div>
+    <label class="field"><span class="lbl">Service request</span>
+      <textarea id="notes" placeholder="What the customer asked for"></textarea></label>
+    <label class="field"><span class="lbl">Work performed</span>
+      <textarea id="workPerformed" placeholder="What you did, what you found, what you recommend"></textarea></label>
+    <div class="meter" id="notesMeter" aria-live="polite">
+      <span class="track"><span class="fill" id="notesMeterFill"></span></span>
+      <span id="notesMeterText">Line 1 of 29 on the form</span>
+    </div>
+  </section>
 
-  <div class="card">
-    <h2>Labor & travel <button class="btn btn-secondary btn-small" id="addLaborBtn">+ Add row</button></h2>
+  <section class="card" id="sec-labor">
+    <div class="card-head"><h2>Labor and travel</h2><span class="count" id="laborCount"></span></div>
     <div id="laborList"></div>
-    <div class="hint">Up to 2 rows fit on the form.</div>
-  </div>
+    <button type="button" class="btn btn-secondary btn-block addrow" id="addLaborBtn">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+      Add a row
+    </button>
+  </section>
 
-  <div class="card">
-    <h2>Totals</h2>
-    <div class="totalline"><span>Labor</span><span id="totLabor">$0.00</span></div>
-    <div class="totalline"><span>Travel</span><span id="totTravel">$0.00</span></div>
-    <div class="totalline"><span>Parts</span><span id="totParts">$0.00</span></div>
-    <div class="totalline"><span>Misc</span><input type="number" id="miscAmt" value="0" step="0.01"></div>
-    <div class="totalline"><span>Freight</span><input type="number" id="freightAmt" value="0" step="0.01"></div>
-    <div class="totalline"><span>Tax</span><input type="number" id="taxAmt" value="0" step="0.01"></div>
-    <div class="totalline"><span>TOTAL</span><span id="totGrand">$0.00</span></div>
-  </div>
+  <section class="card" id="sec-totals">
+    <div class="card-head"><h2>Totals</h2></div>
+    <div class="totalline"><span class="what">Labor<small id="subLabor"></small></span><span class="val" id="totLabor">$0.00</span></div>
+    <div class="totalline"><span class="what">Travel<small id="subTravel"></small></span><span class="val" id="totTravel">$0.00</span></div>
+    <div class="totalline"><span class="what">Parts</span><span class="val" id="totParts">$0.00</span></div>
+    <label class="totalline"><span class="what">Misc</span><input type="number" id="miscAmt" value="0" step="0.01" inputmode="decimal"></label>
+    <label class="totalline"><span class="what">Freight</span><input type="number" id="freightAmt" value="0" step="0.01" inputmode="decimal"></label>
+    <div class="totalline"><span class="what"><label for="taxAmt">Tax</label><small id="subTax"></small></span><input type="number" id="taxAmt" value="0" step="0.01" inputmode="decimal"></div>
+    <div class="totalline grand"><span class="what">Total</span><span class="val" id="totGrand">$0.00</span></div>
+  </section>
 
-  <div class="card">
-    <h2>Signatures</h2>
-    <div class="grid2">
-      <div><label>Customer print name</label><input type="text" id="custSignName"></div>
-      <div><label>Date</label><input type="date" id="custSignDate"></div>
-    </div>
-    <label>Customer signature</label>
-    <div class="sig-wrap">
-      <canvas id="custSigCanvas"></canvas>
-      <div class="sig-line"></div>
-      <div class="sig-empty-hint" id="custSigHint">Sign here</div>
-    </div>
-    <div class="sig-actions">
-      <button class="btn btn-secondary btn-small" data-expand-sig="custSigCanvas">Expand to sign</button>
-      <button class="btn btn-secondary btn-small" data-clear-sig="custSigCanvas">Clear signature</button>
+  <section class="card" id="sec-sign">
+    <div class="card-head"><h2>Signatures</h2></div>
+
+    <div class="sig-block">
+      <div class="g2">
+        <label class="field"><span class="lbl">Customer print name</span><input type="text" id="custSignName" autocomplete="off" autocapitalize="words"></label>
+        <label class="field"><span class="lbl">Date</span><input type="date" id="custSignDate"></label>
+      </div>
+      <button type="button" class="sig-box" id="custSigBox" data-expand-sig="custSigCanvas" aria-label="Customer signature. Tap to sign">
+        <img id="custSigImg" alt="Customer signature" hidden><span id="custSigHint">Tap for customer to sign</span>
+      </button>
+      <div class="sig-actions">
+        <button type="button" class="linkbtn" data-clear-sig="custSigCanvas" id="custSigClear" hidden>Clear signature</button>
+      </div>
     </div>
 
-    <div class="grid2" style="margin-top:14px;">
-      <div><label>Tech print name</label><input type="text" id="techSignName"></div>
-      <div><label>Date</label><input type="date" id="techSignDate"></div>
+    <div class="sig-block">
+      <div class="g2">
+        <label class="field"><span class="lbl">Tech print name</span><input type="text" id="techSignName" autocomplete="off" autocapitalize="words"></label>
+        <label class="field"><span class="lbl">Date</span><input type="date" id="techSignDate"></label>
+      </div>
+      <button type="button" class="sig-box" id="techSigBox" data-expand-sig="techSigCanvas" aria-label="Tech signature. Tap to sign">
+        <img id="techSigImg" alt="Tech signature" hidden><span id="techSigHint">Tap to sign</span>
+      </button>
+      <div class="sig-actions">
+        <label class="check"><input type="checkbox" id="rememberTechSig"> Reuse my signature on every work order</label>
+        <button type="button" class="linkbtn" data-clear-sig="techSigCanvas" id="techSigClear" hidden>Clear</button>
+      </div>
     </div>
-    <label>Tech signature</label>
-    <div class="sig-wrap">
-      <canvas id="techSigCanvas"></canvas>
-      <div class="sig-line"></div>
-      <div class="sig-empty-hint" id="techSigHint">Sign here</div>
-    </div>
-    <div class="sig-actions">
-      <button class="btn btn-secondary btn-small" data-expand-sig="techSigCanvas">Expand to sign</button>
-      <button class="btn btn-secondary btn-small" data-clear-sig="techSigCanvas">Clear signature</button>
-    </div>
-  </div>
+  </section>
 
-</div>
+</main>
 
-<div class="sig-modal" id="sigModal">
+<!-- ============ full-screen signing ============ -->
+<div class="sig-modal" id="sigModal" role="dialog" aria-modal="true" aria-labelledby="sigModalTitle">
   <div class="sig-modal-head">
-    <h3 id="sigModalTitle">Signature</h3>
-    <button class="btn btn-secondary btn-small" id="sigModalCancel">Close</button>
+    <div>
+      <h3 id="sigModalTitle">Signature</h3>
+      <p id="sigModalSub"></p>
+    </div>
+    <button type="button" class="btn btn-secondary btn-small" id="sigModalCancel">Cancel</button>
   </div>
   <div class="sig-modal-canvas-wrap">
     <canvas id="sigModalCanvas"></canvas>
     <div class="sig-modal-line"></div>
-    <div class="sig-modal-hint" id="sigModalHint">Sign here</div>
+    <div class="sig-modal-hint" id="sigModalHint">Sign above the line</div>
   </div>
   <div class="sig-modal-foot">
-    <button class="btn btn-secondary" id="sigModalClear">Clear</button>
-    <button class="btn btn-primary" id="sigModalDone">Done</button>
+    <button type="button" class="btn btn-secondary" id="sigModalClear">Clear</button>
+    <button type="button" class="btn btn-primary" id="sigModalDone">Done</button>
   </div>
 </div>
 
-<div class="foot" id="mainFoot" style="display:none;">
-  <div class="wrap">
-    <div class="row2">
-      <button class="btn btn-secondary" id="resetBtn">Clear form</button>
-      <button class="btn btn-secondary" id="newWorkOrderBtn">New work order</button>
+<!-- ============ footer ============ -->
+<div class="foot" id="mainFoot" hidden>
+  <div class="foot-in">
+    <div class="foot-total"><span>Total</span><strong id="footTotal">$0.00</strong></div>
+    <button type="button" class="btn btn-primary" id="generateBtn">Generate PDF</button>
+  </div>
+</div>
+
+<!-- ============ menu ============ -->
+<div class="sheet" id="menuSheet" role="dialog" aria-modal="true" aria-labelledby="menuTitle">
+  <div class="sheet-panel" tabindex="-1">
+    <div class="sheet-head">
+      <h3 id="menuTitle">Menu</h3>
+      <button type="button" class="iconbtn" data-close-sheet aria-label="Close">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
+      </button>
     </div>
-    <button class="btn btn-primary" id="generateBtn">Generate PDF</button>
+    <div class="sheet-body pad-safe">
+      <div class="menu-list">
+        <button type="button" class="menu-item" id="newWorkOrderBtn">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8zM14 3v5h5M12 12v6M9 15h6"/></svg>
+          <span><b>New work order</b><small id="newWoHint">Starts a blank form with the next number</small></span>
+        </button>
+        <button type="button" class="menu-item" id="importAgainBtn">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v11M7.5 10.5L12 15l4.5-4.5M5 19h14"/></svg>
+          <span><b>Import a ticket</b><small>Fills in any fields that are still empty</small></span>
+        </button>
+        <button type="button" class="menu-item" id="settingsToggle">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h9M17 7h3M4 17h3M11 17h9"/><circle cx="15" cy="7" r="2"/><circle cx="9" cy="17" r="2"/></svg>
+          <span><b>Settings</b><small>Your name, rates, tax, next work order number</small></span>
+        </button>
+        <div class="menu-sep"></div>
+        <button type="button" class="menu-item danger" id="resetBtn">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 7h14M10 7V4h4v3M7 7l1 13h8l1-13"/></svg>
+          <span><b>Clear this form</b><small>Saved customers, equipment and settings stay</small></span>
+        </button>
+      </div>
+    </div>
   </div>
 </div>
 
-<div class="toast" id="toast"></div>
+<!-- ============ settings ============ -->
+<div class="sheet" id="settingsSheet" role="dialog" aria-modal="true" aria-labelledby="settingsTitle">
+  <div class="sheet-panel" tabindex="-1">
+    <div class="sheet-head">
+      <h3 id="settingsTitle">Settings</h3>
+      <button type="button" class="iconbtn" data-close-sheet aria-label="Close">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
+      </button>
+    </div>
+    <div class="sheet-body" id="settingsBody">
+      <div class="g2">
+        <label class="field"><span class="lbl">Your name (technician)</span><input type="text" id="setTechName" autocomplete="off" autocapitalize="words"></label>
+        <label class="field"><span class="lbl">Next work order #</span><input type="text" id="setNextWO" class="num" inputmode="numeric" autocomplete="off"></label>
+      </div>
+      <h4>Rates</h4>
+      <div class="g3">
+        <label class="field"><span class="lbl">Labor $/hr</span><input type="number" id="setLaborRate" step="0.01" inputmode="decimal"></label>
+        <label class="field"><span class="lbl">Overtime $/hr</span><input type="number" id="setOtRate" step="0.01" inputmode="decimal"></label>
+        <label class="field"><span class="lbl">Mileage $/mi</span><input type="number" id="setMileRate" step="0.01" inputmode="decimal"></label>
+      </div>
+      <label class="field"><span class="lbl">Tax rate % (applied to parts)</span><input type="number" id="setTaxRate" step="0.01" inputmode="decimal"></label>
+      <h4>Ticket import</h4>
+      <label class="field"><span class="lbl">Known manufacturers, comma-separated</span>
+        <textarea id="setManufacturers" placeholder="BUNN, La Marzocco, Rancilio, Franke"></textarea></label>
+      <p class="hint">When a ticket lists equipment as one string such as "BUNN H5X Water Boiler", a name on this list becomes the Manufacturer and the rest becomes the Model.</p>
+      <p class="version" id="versionText"></p>
+    </div>
+    <div class="sheet-foot">
+      <button type="button" class="btn btn-primary btn-block" id="saveSettingsBtn">Save settings</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ generated ============ -->
+<div class="sheet" id="resultSheet" role="dialog" aria-modal="true" aria-labelledby="resultTitle">
+  <div class="sheet-panel" tabindex="-1">
+    <div class="sheet-head">
+      <h3 id="resultTitle">Work order ready</h3>
+      <button type="button" class="iconbtn" data-close-sheet aria-label="Close">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
+      </button>
+    </div>
+    <div class="sheet-body pad-safe">
+      <p class="result-file" id="resultFile"></p>
+      <p class="result-blank" id="resultBlank" hidden></p>
+      <div class="result-actions">
+        <button type="button" class="btn btn-primary" id="resultShare">Share or send</button>
+        <div class="row">
+          <button type="button" class="btn btn-secondary" id="resultOpen">Open</button>
+          <button type="button" class="btn btn-secondary" id="resultDownload">Download</button>
+        </div>
+        <div class="row">
+          <button type="button" class="btn btn-secondary" data-close-sheet>Keep editing</button>
+          <button type="button" class="btn btn-secondary" id="resultNext">Next work order</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
 
 <script src="pdf-lib.min.js"></script>
 <script src="pdfjs.min.js"></script>
